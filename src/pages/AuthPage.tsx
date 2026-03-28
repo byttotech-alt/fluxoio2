@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -38,6 +39,7 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } = useAuth();
+  const navigate = useNavigate();
 
   const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
   const registerForm = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
@@ -48,6 +50,7 @@ export function AuthPage() {
     try {
       await signInWithEmail(data.email, data.password);
       toast.success('Login realizado com sucesso!');
+      navigate('/');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao fazer login');
     } finally {
@@ -59,7 +62,8 @@ export function AuthPage() {
     setIsSubmitting(true);
     try {
       await signUpWithEmail(data.email, data.password, data.fullName);
-      toast.success('Conta criada! Verifique seu e-mail para confirmar.');
+      toast.success('Conta criada! Bem-vindo.');
+      navigate('/onboarding');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar conta');
     } finally {
