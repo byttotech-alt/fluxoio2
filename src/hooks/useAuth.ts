@@ -15,18 +15,24 @@ export function useAuth() {
     if (isInitializeStarted) return;
     isInitializeStarted = true;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    // Get initial session safely
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) throw error;
+        setSession(session);
+        if (session?.user) {
+          fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Auth initialization error:', err);
         setLoading(false);
-      }
-    });
+      });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Listen for auth changes globally
+    supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         if (session?.user) {
@@ -37,8 +43,8 @@ export function useAuth() {
         }
       }
     );
-
-    return () => subscription.unsubscribe();
+    // Explicitly NO cleanup because isInitializeStarted is global,
+    // so we want the listener to live forever in the module scope.
   }, []);
 
   async function fetchProfile(userId: string) {
