@@ -117,54 +117,70 @@ export function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      // Upload logo if present
-      let logo_url = null;
-      if (company.logo_file) {
-        const ext = company.logo_file.name.split('.').pop();
-        const path = `${user.id}/logo.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from('logos')
-          .upload(path, company.logo_file, { upsert: true });
-        if (!uploadErr) {
-          const { data } = supabase.storage.from('logos').getPublicUrl(path);
-          logo_url = data.publicUrl;
-        }
-      }
+      // Create a timeout promise to prevent infinite hanging
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite excedido. O servidor demorou muito para responder.')), 15000)
+      );
 
-      // Update profile
-      await updateProfile({
-        company_name: company.company_name,
-        cnpj: company.cnpj,
-        phone: company.phone,
-        address: {
-          cep: company.cep,
-          street: company.address_street,
-          number: company.address_number,
-          city: company.address_city,
-          state: company.address_state,
-        },
-        logo_url,
-        segments: selectedSegments,
-        accent_color: accentColor,
-        theme,
-        display_name: displayName || `${company.company_name} — Gestão`,
-        onboarding_completed: true,
-      });
+      // Wrap the actual operations in an async IIFE to race against the timeout
+      await Promise.race([
+        (async () => {
+          // Upload logo if present
+          let logo_url = null;
+          if (company.logo_file) {
+            const ext = company.logo_file.name.split('.').pop();
+            const path = `${user.id}/logo.${ext}`;
+            const { error: uploadErr } = await supabase.storage
+              .from('logos')
+              .upload(path, company.logo_file, { upsert: true });
+            
+            if (uploadErr) {
+              console.error('Logo upload error:', uploadErr);
+            } else {
+              const { data } = supabase.storage.from('logos').getPublicUrl(path);
+              logo_url = data.publicUrl;
+            }
+          }
 
-      // Insert team invites
-      if (invites.length > 0) {
-        const teamRows = invites.map(inv => ({
-          profile_id: user.id,
-          invited_email: inv.email,
-          role: inv.role,
-          status: 'invited',
-        }));
-        await supabase.from('team_members').insert(teamRows);
-      }
+          // Update profile
+          await updateProfile({
+            company_name: company.company_name,
+            cnpj: company.cnpj,
+            phone: company.phone,
+            address: {
+              cep: company.cep,
+              street: company.address_street,
+              number: company.address_number,
+              city: company.address_city,
+              state: company.address_state,
+            },
+            logo_url,
+            segments: selectedSegments,
+            accent_color: accentColor,
+            theme,
+            display_name: displayName || `${company.company_name} — Gestão`,
+            onboarding_completed: true,
+          });
+
+          // Insert team invites
+          if (invites.length > 0) {
+            const teamRows = invites.map(inv => ({
+              profile_id: user.id,
+              invited_email: inv.email,
+              role: inv.role,
+              status: 'invited',
+            }));
+            const { error: inviteErr } = await supabase.from('team_members').insert(teamRows);
+            if (inviteErr) throw new Error(`Erro ao convidar equipe: ${inviteErr.message}`);
+          }
+        })(),
+        timeout
+      ]);
 
       toast.success('Configuração concluída! Bem-vindo ao Fluxio!');
       navigate('/');
     } catch (err: any) {
+      console.error('Onboarding falhou:', err);
       toast.error(err.message || 'Erro ao salvar configuração');
     } finally {
       setIsSubmitting(false);
