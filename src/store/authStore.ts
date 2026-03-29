@@ -8,10 +8,12 @@ interface AuthState {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isInitialized: boolean;
   setSession: (session: Session | null) => void;
   setUser: (user: User | null) => void;
   setProfile: (profile: Profile | null) => void;
   setLoading: (loading: boolean) => void;
+  finalizeInitialization: () => void;
   logout: () => void;
 }
 
@@ -20,9 +22,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   profile: null,
   isLoading: true,
+  isInitialized: false,
   setSession: (session) => set({ session, user: session?.user ?? null }),
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
   setLoading: (isLoading) => set({ isLoading }),
-  logout: () => set({ session: null, user: null, profile: null }),
+  finalizeInitialization: () => set({ isInitialized: true, isLoading: false }),
+  logout: () => set({ session: null, user: null, profile: null, isLoading: false }),
 }));

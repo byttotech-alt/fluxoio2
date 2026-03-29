@@ -3,13 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
   console.error(
-    '🚨 CRITICAL: Missing Supabase environment variables!',
-    '\nVITE_SUPABASE_URL:', supabaseUrl ? '✅ set' : '❌ MISSING',
-    '\nVITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ set' : '❌ MISSING',
-    '\nThe app will show the login page but auth will not work.',
-    '\nAdd these to your .env file locally or to Vercel Environment Variables for deployment.'
+    '🚨 CRITICAL: Missing or invalid Supabase environment variables!',
+    '\nVITE_SUPABASE_URL:', supabaseUrl && !supabaseUrl.includes('placeholder') ? '✅ set' : '❌ MISSING/INVALID',
+    '\nVITE_SUPABASE_ANON_KEY:', supabaseAnonKey && supabaseAnonKey !== 'placeholder-key' ? '✅ set' : '❌ MISSING/INVALID',
+    '\nThe app will show the loading screen for 5s and then fallback to login.',
+    '\nCheck Vercel Project Settings > Environment Variables.'
   );
 }
 

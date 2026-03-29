@@ -8,51 +8,59 @@ import type { Profile } from '@/types/database';
 let isInitializeStarted = false;
 
 export function useAuth() {
-  const { session, user, profile, isLoading, setSession, setProfile, setLoading, logout } = useAuthStore();
+  const { 
+    session, 
+    user, 
+    profile, 
+    isLoading, 
+    isInitialized,
+    setSession, 
+    setProfile, 
+    setLoading, 
+    finalizeInitialization,
+    logout 
+  } = useAuthStore();
   const { setMode, setAccentColor } = useThemeStore();
 
   useEffect(() => {
-    if (isInitializeStarted) return;
-    isInitializeStarted = true;
+    if (isInitialized) return;
 
-    let didFinish = false;
+    let timeoutId: number | null = null;
+    let isMounted = true;
 
-    // Safety timeout: if Supabase doesn't respond in 5 seconds,
-    // force loading to false so the user sees the login page
-    const safetyTimer = setTimeout(() => {
-      if (!didFinish) {
-        console.warn('Auth initialization timed out after 5s — forcing load complete');
-        didFinish = true;
-        setLoading(false);
+    // Safety timeout: if Supabase doesn't respond in 5s
+    timeoutId = window.setTimeout(() => {
+      if (isMounted && !useAuthStore.getState().isInitialized) {
+        console.warn('⚡ Auth initialization timed out (5s) — forcing dashboard access');
+        finalizeInitialization();
       }
     }, 5000);
 
-    function markDone() {
-      didFinish = true;
-      clearTimeout(safetyTimer);
-    }
-
-    // Get initial session safely
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        if (didFinish) return; // timeout already fired
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
-        setSession(session);
-        if (session?.user) {
-          fetchProfile(session.user.id).then(markDone);
-        } else {
-          markDone();
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error('Auth initialization error:', err);
-        markDone();
-        setLoading(false);
-      });
 
-    // Listen for auth changes globally
-    supabase.auth.onAuthStateChange(
+        if (isMounted) {
+          setSession(session);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+      } finally {
+        if (isMounted) {
+          if (timeoutId) clearTimeout(timeoutId);
+          finalizeInitialization();
+        }
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         if (session?.user) {
@@ -60,10 +68,18 @@ export function useAuth() {
         } else {
           setProfile(null);
           setLoading(false);
+          // If we was still initializing and auth changed (e.g. sign out), stop loading
+          if (!useAuthStore.getState().isInitialized) finalizeInitialization();
         }
       }
     );
-  }, []);
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, [isInitialized]);
 
   async function fetchProfile(userId: string) {
     try {
