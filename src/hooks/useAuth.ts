@@ -31,10 +31,20 @@ export function useAuth() {
     // Safety timeout: if Supabase doesn't respond in 5s
     timeoutId = window.setTimeout(() => {
       if (isMounted && !useAuthStore.getState().isInitialized) {
-        console.warn('⚡ Auth initialization timed out (5s) — forcing dashboard access');
+        console.warn('⚡ Auth initialization timed out (5s) — forcing fallback');
+        
+        // If we reach here, Supabase is NOT responding.
+        // We clear any stale persisted state to avoid hanging on PrivateRoute (user exists but profile doesn't)
+        const currentState = useAuthStore.getState();
+        if (currentState.user && !currentState.profile) {
+          console.log('🧹 Clearing stale session to unlock UI');
+          logout(); 
+        }
+        
         finalizeInitialization();
       }
     }, 5000);
+
 
     const checkSession = async () => {
       console.log('🔍 Checking Supabase session...');
