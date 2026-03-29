@@ -37,25 +37,30 @@ export function useAuth() {
     }, 5000);
 
     const checkSession = async () => {
+      console.log('🔍 Checking Supabase session...');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
 
         if (isMounted) {
+          console.log('✅ Session found:', session?.user?.email || 'none');
           setSession(session);
           if (session?.user) {
+            console.log('👤 Fetching profile for:', session.user.id);
             await fetchProfile(session.user.id);
           }
         }
       } catch (err) {
-        console.error('Auth check failed:', err);
+        console.error('❌ Auth check failed:', err);
       } finally {
         if (isMounted) {
+          console.log('🏁 Initial auth check complete');
           if (timeoutId) clearTimeout(timeoutId);
           finalizeInitialization();
         }
       }
     };
+
 
     checkSession();
 
