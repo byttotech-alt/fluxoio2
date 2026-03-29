@@ -12,7 +12,7 @@ import {
 import type { MenuItem } from '@/lib/constants';
 import './Sidebar.css';
 
-export function Sidebar() {
+export function Sidebar({ planPercent: externalPercent }: { planPercent?: number }) {
   const { profile } = useAuthStore();
   const { sidebarCollapsed, toggleSidebar, sidebarMobileOpen, setSidebarMobileOpen } = useUIStore();
   const { signOut } = useAuth();
@@ -33,7 +33,7 @@ export function Sidebar() {
   }, [menuItems]);
 
   const planLabel = profile?.plan === 'enterprise' ? 'Enterprise' : profile?.plan === 'pro' ? 'Pro' : 'Free';
-  const planPercent = profile?.plan === 'free' ? 35 : profile?.plan === 'pro' ? 68 : 90;
+  const planPercent = externalPercent ?? (profile?.plan === 'free' ? 35 : profile?.plan === 'pro' ? 68 : 90);
 
   async function handleLogout() {
     await signOut();
