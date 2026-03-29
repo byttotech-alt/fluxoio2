@@ -163,8 +163,7 @@ export function useAuth() {
     if (!user) return;
     const { data, error } = await supabase
       .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
+      .upsert({ id: user.id, ...updates })
       .select()
       .single();
     if (error) throw error;

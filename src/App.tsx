@@ -39,10 +39,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   
-  // Wait for profile if user exists
-  if (user && !profile) return <LoadingScreen />;
-
-  if (user && profile && !profile.onboarding_completed) {
+  // If we finished loading and profile is missing or incomplete, go to onboarding
+  if (!profile || !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -55,9 +53,7 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   
-  // Wait for profile if user exists
-  if (user && !profile) return <LoadingScreen />;
-
+  // If profile is loaded and onboarding is done, send them to dashboard
   if (profile?.onboarding_completed) return <Navigate to="/" replace />;
 
   return <>{children}</>;
