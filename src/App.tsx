@@ -39,10 +39,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   
-  // If user exists but profile doesn't, they need to onboard
-  if (user && !profile) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  // Wait for profile if user exists
+  if (user && !profile) return <LoadingScreen />;
 
   if (user && profile && !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
@@ -57,7 +55,9 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   
-  // Users without profiles are allowed to reach onboarding to create them
+  // Wait for profile if user exists
+  if (user && !profile) return <LoadingScreen />;
+
   if (profile?.onboarding_completed) return <Navigate to="/" replace />;
 
   return <>{children}</>;
@@ -68,9 +68,9 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) return <LoadingScreen />;
   
-  // If user is already logged in, redirect away from auth page
-  if (user) {
-    if (profile?.onboarding_completed) return <Navigate to="/" replace />;
+  // Only redirect away from auth page if profile is LOADED and confirmed
+  if (user && profile) {
+    if (profile.onboarding_completed) return <Navigate to="/" replace />;
     return <Navigate to="/onboarding" replace />;
   }
 
