@@ -172,6 +172,14 @@ export function OnboardingPage() {
             }));
             const { error: inviteErr } = await supabase.from('team_members').insert(teamRows);
             if (inviteErr) throw new Error(`Erro ao convidar equipe: ${inviteErr.message}`);
+
+            // Dispara e-mail transacional via Supabase Edge Function com Resend
+            await supabase.functions.invoke('send-invite', {
+              body: {
+                emails: invites.map(i => i.email),
+                inviterName: displayName || company.company_name
+              }
+            });
           }
         })(),
         timeout
