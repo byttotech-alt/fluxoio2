@@ -160,14 +160,6 @@ export function OnboardingPage() {
           status: 'invited',
         }));
         await supabase.from('team_members').insert(teamRows);
-        
-        // Dispara e-mail transacional via Supabase Edge Function com Resend
-        await supabase.functions.invoke('send-invite', {
-          body: {
-            emails: invites.map(i => i.email),
-            inviterName: displayName || company.company_name
-          }
-        });
       }
 
       toast.success('Configuração concluída! Bem-vindo ao Fluxio!');

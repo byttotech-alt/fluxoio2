@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import type { Profile } from '@/types/database';
 
-let isInitializeStarted = false;
 
 export function useAuth() {
   const { 
@@ -28,13 +27,13 @@ export function useAuth() {
     let timeoutId: number | null = null;
     let isMounted = true;
 
-    // Safety timeout: if Supabase doesn't respond in 15s
+    // Safety timeout: if Supabase doesn't respond in 8s
     timeoutId = window.setTimeout(() => {
       if (isMounted && !useAuthStore.getState().isInitialized) {
-        console.warn('⚡ Auth initialization timed out (15s) — unlocking UI');
+        console.warn('⚡ Auth initialization timed out (8s) — unlocking UI');
         finalizeInitialization();
       }
-    }, 15000);
+    }, 8000);
 
 
 
@@ -75,8 +74,11 @@ export function useAuth() {
         } else {
           setProfile(null);
           setLoading(false);
-          // If we was still initializing and auth changed (e.g. sign out), stop loading
-          if (!useAuthStore.getState().isInitialized) finalizeInitialization();
+        }
+        
+        // Ensure initialization completes on any auth change if not already done
+        if (!useAuthStore.getState().isInitialized) {
+          finalizeInitialization();
         }
       }
     );
