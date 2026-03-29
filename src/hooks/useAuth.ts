@@ -15,19 +15,39 @@ export function useAuth() {
     if (isInitializeStarted) return;
     isInitializeStarted = true;
 
+    let didFinish = false;
+
+    // Safety timeout: if Supabase doesn't respond in 5 seconds,
+    // force loading to false so the user sees the login page
+    const safetyTimer = setTimeout(() => {
+      if (!didFinish) {
+        console.warn('Auth initialization timed out after 5s — forcing load complete');
+        didFinish = true;
+        setLoading(false);
+      }
+    }, 5000);
+
+    function markDone() {
+      didFinish = true;
+      clearTimeout(safetyTimer);
+    }
+
     // Get initial session safely
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
+        if (didFinish) return; // timeout already fired
         if (error) throw error;
         setSession(session);
         if (session?.user) {
-          fetchProfile(session.user.id);
+          fetchProfile(session.user.id).then(markDone);
         } else {
+          markDone();
           setLoading(false);
         }
       })
       .catch((err) => {
         console.error('Auth initialization error:', err);
+        markDone();
         setLoading(false);
       });
 
@@ -43,8 +63,6 @@ export function useAuth() {
         }
       }
     );
-    // Explicitly NO cleanup because isInitializeStarted is global,
-    // so we want the listener to live forever in the module scope.
   }, []);
 
   async function fetchProfile(userId: string) {
